@@ -23,10 +23,15 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap');
+        
         body { 
             font-family: 'Hind Siliguri', 'Segoe UI', Tahoma, sans-serif; 
             background-color: #f0f4f8; 
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
+        
         .animate-fade-in { animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         
@@ -42,10 +47,23 @@
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
+
+        /* --- SutonnyMJ Fix Classes --- */
+        /* This class will apply SutonnyMJ for Bijoy text, but automatically fallback to Hind Siliguri for Unicode text! */
+        .sutonny-text {
+            font-family: 'SutonnyMJ', 'SutonnyOMJ', 'Hind Siliguri', sans-serif !important;
+            font-size: 1.15em;
+        }
+        
+        /* Force Sans-serif for explicit English badges (SFI, Non-SFI) so they don't look like Bengali */
+        .force-sans {
+            font-family: 'Hind Siliguri', 'Segoe UI', sans-serif !important;
+            letter-spacing: normal;
+        }
     </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="root" class="flex-grow flex flex-col"></div>
 
     <script type="text/babel">
         const { useState, useMemo, useEffect } = React;
@@ -74,7 +92,10 @@
             const [objections, setObjections] = useState([]);
             const [resolvedIds, setResolvedIds] = useState(new Set());
             const [activeTab, setActiveTab] = useState('summary'); 
-            const [isAutoLoading, setIsAutoLoading] = useState(false); // For showing spinner
+            const [isAutoLoading, setIsAutoLoading] = useState(false);
+            
+            // --- SutonnyMJ Fix State ---
+            const [useSutonny, setUseSutonny] = useState(false);
             
             const [filterZone, setFilterZone] = useState('All');
             const [filterType, setFilterType] = useState('All');
@@ -92,14 +113,13 @@
             const autoLoadExcelFile = async () => {
                 setIsAutoLoading(true);
                 try {
-                    // এটি গিটহাব বা লোকাল সার্ভার থেকে ফাইলটি ফেচ করবে
                     const response = await fetch('All (Office Wise).xlsx'); 
                     if (response.ok) {
                         const arrayBuffer = await response.arrayBuffer();
                         const wb = XLSX.read(arrayBuffer, { type: 'array' });
                         processExcelData(wb);
                     } else {
-                        console.warn("Auto-load failed: 'All (Office Wise).xlsx' not found on the server.");
+                        console.warn("Auto-load failed: 'All (Office Wise).xlsx' not found.");
                     }
                 } catch (error) {
                     console.error("Error auto-loading file:", error);
@@ -198,13 +218,11 @@
                 ));
             };
 
-            // Handles clicking an office in the summary table
             const handleOfficeClick = (officeName) => {
                 setSearchTerm(officeName); 
                 setActiveTab('details'); 
             };
 
-            // Switch tabs and reset search if going back to summary
             const handleTabSwitch = (tabName) => {
                 if (tabName === 'summary') {
                     setSearchTerm(''); 
@@ -212,7 +230,7 @@
                 setActiveTab(tabName);
             };
 
-            // --- Filtering Logic ---
+            // Filtering Logic
             const filteredData = useMemo(() => {
                 return objections.filter(obj => {
                     let matchZone = true;
@@ -237,7 +255,6 @@
                 });
             }, [objections, filterZone, filterType, filterYear, filterCategory, searchTerm]);
 
-            // --- Summary Aggregation Data ---
             const summaryData = useMemo(() => {
                 const grouped = {};
                 filteredData.forEach(item => {
@@ -253,11 +270,9 @@
                 return Object.values(grouped);
             }, [filteredData]);
 
-            // Dropdown Options
             const uniqueYears = ['All', ...new Set(objections.map(o => o.year).filter(y => y !== 'Unknown'))].sort();
             const uniqueCategories = [...new Set(objections.map(o => o.category).filter(c => c && c !== 'Unknown'))].sort();
             
-            // Stats
             const stats = {
                 total: filteredData.length,
                 sfi: filteredData.filter(d => d.type === 'SFI').length,
@@ -272,7 +287,7 @@
             // 1. Login Screen
             if (!currentUser) {
                 return (
-                    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-blue-800 to-slate-900 p-4">
+                    <div className="flex-grow flex flex-col items-center justify-center bg-gradient-to-br from-indigo-900 via-blue-800 to-slate-900 p-4">
                         <div className="glass-card p-10 rounded-3xl shadow-2xl w-full max-w-md animate-fade-in relative overflow-hidden">
                             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-400 to-indigo-500"></div>
                             <div className="text-center mb-8">
@@ -312,13 +327,24 @@
                                 </button>
                             </form>
                         </div>
+
+                        {/* Developer Credit - Login Page */}
+                        <div className="mt-8 text-center animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                            <p className="text-blue-200/80 text-sm font-medium">
+                                <i className="fas fa-code text-blue-400 mr-1.5"></i> 
+                                Developed by <span className="font-bold text-white tracking-wide">Md. Ohidur Rahman</span>
+                            </p>
+                            <p className="text-blue-300/60 text-xs mt-1">Assistant Director (Audit)</p>
+                        </div>
                     </div>
                 );
             }
 
             // 2. Dashboard Screen
+            const textClass = useSutonny ? 'sutonny-text' : '';
+
             return (
-                <div className="min-h-screen flex flex-col">
+                <div className="flex-grow flex flex-col">
                     {/* Header */}
                     <header className="bg-gradient-to-r from-slate-900 via-indigo-900 to-blue-900 text-white shadow-xl sticky top-0 z-30">
                         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center p-4 gap-4">
@@ -335,20 +361,36 @@
                                             </span>
                                         )}
                                     </h1>
-                                    <div className="flex items-center gap-2 text-indigo-200 text-xs mt-0.5">
+                                    <div className="flex items-center gap-2 text-indigo-200 text-xs mt-0.5 force-sans">
                                         <i className="fas fa-user-circle"></i>
                                         <span>{currentUser.name} (রোল: {currentUser.role})</span>
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-4">
-                                <label className="cursor-pointer bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-sm px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 hover:shadow-lg" title="ম্যানুয়ালি ফাইল আপলোড করুন">
+                            
+                            <div className="flex flex-wrap items-center justify-center gap-3">
+                                {/* SutonnyMJ Toggle Button */}
+                                <label 
+                                    className={`cursor-pointer border px-3 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-md ${useSutonny ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white/10 hover:bg-white/20 border-white/20 text-white backdrop-blur-sm'}`}
+                                    title="ভাঙা ফন্ট ঠিক করতে এটি চালু করুন (আপনার পিসিতে SutonnyMJ থাকতে হবে)"
+                                >
+                                    <input 
+                                        type="checkbox" 
+                                        className="hidden" 
+                                        checked={useSutonny} 
+                                        onChange={e => setUseSutonny(e.target.checked)} 
+                                    />
+                                    {useSutonny ? <i className="fas fa-check-circle text-white"></i> : <i className="fas fa-font text-blue-300"></i>}
+                                    SutonnyMJ ফিক্স
+                                </label>
+
+                                <label className="cursor-pointer bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-sm px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 hover:shadow-lg force-sans" title="ম্যানুয়ালি ফাইল আপলোড করুন">
                                     <i className="fas fa-cloud-upload-alt text-blue-300"></i> ম্যানুয়াল আপলোড
                                     <input type="file" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleFileUpload} />
                                 </label>
                                 <button 
                                     onClick={() => setCurrentUser(null)} 
-                                    className="bg-red-500/90 hover:bg-red-500 border border-red-400 px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg hover:shadow-red-500/30 flex items-center gap-2"
+                                    className="bg-red-500/90 hover:bg-red-500 border border-red-400 px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg hover:shadow-red-500/30 flex items-center gap-2 force-sans"
                                 >
                                     <i className="fas fa-power-off"></i> লগআউট
                                 </button>
@@ -358,46 +400,46 @@
 
                     <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-6 space-y-6">
                         
-                        {/* Beautiful Stats Cards */}
+                        {/* Stats Cards */}
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 animate-fade-in">
                             <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-sm hover:shadow-md border border-blue-100 p-5 transform transition-all hover:-translate-y-1">
                                 <div className="flex justify-between items-start mb-2">
-                                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">মোট আপত্তি</p>
+                                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider force-sans">মোট আপত্তি</p>
                                     <i className="fas fa-folder-open text-blue-400 opacity-50 text-xl"></i>
                                 </div>
-                                <p className="text-3xl font-black text-blue-900">{stats.total}</p>
+                                <p className={`text-3xl font-black text-blue-900 ${textClass}`}>{stats.total}</p>
                             </div>
                             <div className="bg-gradient-to-br from-white to-red-50 rounded-2xl shadow-sm hover:shadow-md border border-red-100 p-5 transform transition-all hover:-translate-y-1">
                                 <div className="flex justify-between items-start mb-2">
-                                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">SFI</p>
+                                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider force-sans">SFI</p>
                                     <i className="fas fa-exclamation-triangle text-red-400 opacity-50 text-xl"></i>
                                 </div>
-                                <p className="text-3xl font-black text-red-600">{stats.sfi}</p>
+                                <p className={`text-3xl font-black text-red-600 ${textClass}`}>{stats.sfi}</p>
                             </div>
                             <div className="bg-gradient-to-br from-white to-amber-50 rounded-2xl shadow-sm hover:shadow-md border border-amber-100 p-5 transform transition-all hover:-translate-y-1">
                                 <div className="flex justify-between items-start mb-2">
-                                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Non-SFI</p>
+                                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider force-sans">Non-SFI</p>
                                     <i className="fas fa-file-alt text-amber-400 opacity-50 text-xl"></i>
                                 </div>
-                                <p className="text-3xl font-black text-amber-600">{stats.nonsfi}</p>
+                                <p className={`text-3xl font-black text-amber-600 ${textClass}`}>{stats.nonsfi}</p>
                             </div>
                             <div className="bg-gradient-to-br from-white to-purple-50 rounded-2xl shadow-sm hover:shadow-md border border-purple-100 p-5 transform transition-all hover:-translate-y-1">
                                 <div className="flex justify-between items-start mb-2">
-                                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">বার্ষিক</p>
+                                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider force-sans">বার্ষিক</p>
                                     <i className="fas fa-calendar-alt text-purple-400 opacity-50 text-xl"></i>
                                 </div>
-                                <p className="text-3xl font-black text-purple-600">{stats.annual}</p>
+                                <p className={`text-3xl font-black text-purple-600 ${textClass}`}>{stats.annual}</p>
                             </div>
                             <div className="bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-sm hover:shadow-md border border-emerald-100 p-5 transform transition-all hover:-translate-y-1">
                                 <div className="flex justify-between items-start mb-2">
-                                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">নিষ্পন্ন</p>
+                                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider force-sans">নিষ্পন্ন</p>
                                     <i className="fas fa-check-circle text-emerald-400 opacity-50 text-xl"></i>
                                 </div>
-                                <p className="text-3xl font-black text-emerald-600">{stats.resolved}</p>
+                                <p className={`text-3xl font-black text-emerald-600 ${textClass}`}>{stats.resolved}</p>
                             </div>
                         </div>
 
-                        {/* Soft Filter Panel */}
+                        {/* Filter Panel */}
                         <div className="glass-card rounded-2xl shadow-sm p-6 animate-fade-in" style={{ animationDelay: '0.1s' }}>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                                 
@@ -407,12 +449,12 @@
                                         <i className="fas fa-map-marker-alt text-indigo-500"></i> জোন নির্বাচন:
                                     </label>
                                     <select 
-                                        className="w-full border border-gray-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none text-sm bg-white shadow-sm transition-all hover:border-indigo-300"
+                                        className={`w-full border border-gray-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm transition-all hover:border-indigo-300 ${textClass}`}
                                         value={filterZone}
                                         onChange={(e) => setFilterZone(e.target.value)}
                                         disabled={currentUser.role !== 'central'}
                                     >
-                                        {currentUser.role === 'central' && <option value="All">সকল জোন</option>}
+                                        {currentUser.role === 'central' && <option value="All" className="force-sans">সকল জোন</option>}
                                         {currentUser.role !== 'central' ? (
                                             <option value={currentUser.zone}>{currentUser.zone}</option>
                                         ) : (
@@ -435,7 +477,7 @@
                                         <i className="fas fa-filter text-indigo-500"></i> আপত্তির ধরন:
                                     </label>
                                     <select 
-                                        className="w-full border border-gray-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none text-sm bg-white shadow-sm transition-all hover:border-indigo-300"
+                                        className="w-full border border-gray-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm transition-all hover:border-indigo-300 force-sans"
                                         value={filterType}
                                         onChange={(e) => setFilterType(e.target.value)}
                                     >
@@ -452,11 +494,11 @@
                                         <i className="fas fa-tags text-indigo-500"></i> ক্যাটাগরি:
                                     </label>
                                     <select 
-                                        className="w-full border border-gray-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none text-sm bg-white shadow-sm transition-all hover:border-indigo-300"
+                                        className={`w-full border border-gray-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm transition-all hover:border-indigo-300 ${textClass}`}
                                         value={filterCategory}
                                         onChange={(e) => setFilterCategory(e.target.value)}
                                     >
-                                        <option value="All">সকল ক্যাটাগরি</option>
+                                        <option value="All" className="force-sans">সকল ক্যাটাগরি</option>
                                         {uniqueCategories.map(cat => (
                                             <option key={cat} value={cat}>{cat}</option>
                                         ))}
@@ -469,7 +511,7 @@
                                         <i className="far fa-calendar-alt text-indigo-500"></i> নিরীক্ষা বছর:
                                     </label>
                                     <select 
-                                        className="w-full border border-gray-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none text-sm bg-white shadow-sm transition-all hover:border-indigo-300"
+                                        className={`w-full border border-gray-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm transition-all hover:border-indigo-300 ${textClass}`}
                                         value={filterYear}
                                         onChange={(e) => setFilterYear(e.target.value)}
                                     >
@@ -484,8 +526,8 @@
                                     <div className="relative group">
                                         <input 
                                             type="text" 
-                                            placeholder="দপ্তর, অনু নং বা আপত্তির শিরোনাম দিয়ে খুঁজুন..."
-                                            className="w-full border border-gray-200 rounded-xl pl-12 p-3.5 focus:ring-2 focus:ring-indigo-500 outline-none text-sm bg-white shadow-sm transition-all hover:border-indigo-300"
+                                            placeholder={useSutonny ? "SutonnyMJ ফন্টে থাকা ডাটা খুঁজতে ইংরেজিতে টাইপ করুন..." : "দপ্তর, অনু নং বা আপত্তির শিরোনাম দিয়ে খুঁজুন..."}
+                                            className={`w-full border border-gray-200 rounded-xl pl-12 p-3.5 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm transition-all hover:border-indigo-300 ${textClass}`}
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
                                         />
@@ -503,8 +545,8 @@
                             </div>
                         </div>
 
-                        {/* --- Modern Tabs Navigation --- */}
-                        <div className="flex gap-2 mb-4">
+                        {/* Tabs Navigation */}
+                        <div className="flex gap-2 mb-4 force-sans">
                             <button
                                 className={`px-6 py-3 rounded-t-xl text-sm font-bold transition-all duration-300 ${activeTab === 'summary' ? 'bg-indigo-600 text-white shadow-md transform -translate-y-1' : 'bg-white text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 border border-gray-200 border-b-0 mt-1'}`}
                                 onClick={() => handleTabSwitch('summary')}
@@ -519,12 +561,12 @@
                             </button>
                         </div>
 
-                        {/* --- Summary Tab Content --- */}
+                        {/* Summary Tab Content */}
                         {activeTab === 'summary' && (
                             <div className="bg-white rounded-2xl rounded-tl-none shadow-md border border-gray-100 overflow-hidden animate-fade-in -mt-4 relative z-10">
                                 <div className="overflow-x-auto max-h-[600px]">
                                     <table className="w-full text-sm text-left">
-                                        <thead className="text-xs text-gray-600 uppercase bg-slate-50 sticky top-0 shadow-sm z-10 backdrop-blur-md">
+                                        <thead className="text-xs text-gray-600 uppercase bg-slate-50 sticky top-0 shadow-sm z-10 backdrop-blur-md force-sans">
                                             <tr>
                                                 <th className="p-4 border-b font-bold tracking-wider">দপ্তরের নাম</th>
                                                 <th className="p-4 border-b text-center font-bold tracking-wider">জোন</th>
@@ -539,7 +581,7 @@
                                         <tbody className="divide-y divide-gray-100">
                                             {summaryData.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan="8" className="p-12 text-center text-gray-400">
+                                                    <td colSpan="8" className="p-12 text-center text-gray-400 force-sans">
                                                         <i className="fas fa-chart-bar text-5xl mb-4 text-gray-200"></i>
                                                         <p className="text-lg font-medium">সারসংক্ষেপ করার মতো কোনো তথ্য নেই</p>
                                                     </td>
@@ -547,9 +589,8 @@
                                             ) : (
                                                 summaryData.map((row, idx) => (
                                                     <tr key={idx} className="hover:bg-indigo-50/50 transition-colors group">
-                                                        {/* Clickable Office Name */}
                                                         <td 
-                                                            className="p-4 font-bold text-gray-800 cursor-pointer"
+                                                            className={`p-4 font-bold text-gray-800 cursor-pointer ${textClass}`}
                                                             onClick={() => handleOfficeClick(row.office)}
                                                             title="এই দপ্তরের বিস্তারিত দেখতে ক্লিক করুন"
                                                         >
@@ -560,15 +601,15 @@
                                                                 <i className="fas fa-external-link-alt text-[10px] opacity-0 group-hover:opacity-100 text-indigo-400 transition-all transform group-hover:translate-x-1"></i>
                                                             </div>
                                                         </td>
-                                                        <td className="p-4 text-center text-gray-600">
-                                                            <span className="bg-gray-100 px-2 py-1 rounded-md text-xs font-medium">{row.zone}</span>
+                                                        <td className={`p-4 text-center text-gray-600 ${textClass}`}>
+                                                            <span className="bg-gray-100 px-2 py-1 rounded-md font-medium">{row.zone}</span>
                                                         </td>
-                                                        <td className="p-4 text-center font-black text-gray-700 bg-gray-50/30">{row.total}</td>
-                                                        <td className="p-4 text-center text-red-600 font-bold">{row.sfi}</td>
-                                                        <td className="p-4 text-center text-amber-600 font-bold">{row.nonsfi}</td>
-                                                        <td className="p-4 text-center text-purple-600 font-bold">{row.annual}</td>
-                                                        <td className="p-4 text-center text-emerald-600 font-bold">{row.resolved}</td>
-                                                        <td className="p-4 text-center text-orange-500 font-bold">{row.total - row.resolved}</td>
+                                                        <td className={`p-4 text-center font-black text-gray-700 bg-gray-50/30 ${textClass}`}>{row.total}</td>
+                                                        <td className={`p-4 text-center text-red-600 font-bold ${textClass}`}>{row.sfi}</td>
+                                                        <td className={`p-4 text-center text-amber-600 font-bold ${textClass}`}>{row.nonsfi}</td>
+                                                        <td className={`p-4 text-center text-purple-600 font-bold ${textClass}`}>{row.annual}</td>
+                                                        <td className={`p-4 text-center text-emerald-600 font-bold ${textClass}`}>{row.resolved}</td>
+                                                        <td className={`p-4 text-center text-orange-500 font-bold ${textClass}`}>{row.total - row.resolved}</td>
                                                     </tr>
                                                 ))
                                             )}
@@ -578,17 +619,17 @@
                             </div>
                         )}
 
-                        {/* --- Details Tab Content --- */}
+                        {/* Details Tab Content */}
                         {activeTab === 'details' && (
                             <div className="bg-white rounded-2xl rounded-tl-none shadow-md border border-gray-100 overflow-hidden animate-fade-in -mt-4 relative z-10">
-                                <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-100 px-5 py-3.5 flex justify-between items-center">
+                                <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-100 px-5 py-3.5 flex justify-between items-center force-sans">
                                     <span className="text-indigo-800 font-bold text-sm flex items-center gap-2">
-                                        <i className="fas fa-list-ul"></i> সর্বমোট {filteredData.length} টি রেকর্ড পাওয়া গেছে
+                                        <i className="fas fa-list-ul"></i> সর্বমোট <span className={textClass}>{filteredData.length}</span> টি রেকর্ড পাওয়া গেছে
                                     </span>
                                 </div>
                                 <div className="overflow-x-auto max-h-[600px]">
                                     <table className="w-full text-sm text-left">
-                                        <thead className="text-xs text-gray-600 uppercase bg-slate-50 sticky top-0 shadow-sm z-10 backdrop-blur-md">
+                                        <thead className="text-xs text-gray-600 uppercase bg-slate-50 sticky top-0 shadow-sm z-10 backdrop-blur-md force-sans">
                                             <tr>
                                                 <th className="p-4 border-b font-bold tracking-wider whitespace-nowrap">দপ্তরের নাম</th>
                                                 <th className="p-4 border-b font-bold tracking-wider whitespace-nowrap">বছর ও অনু নং</th>
@@ -603,7 +644,7 @@
                                         <tbody className="divide-y divide-gray-100">
                                             {filteredData.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan="8" className="p-12 text-center text-gray-400">
+                                                    <td colSpan="8" className="p-12 text-center text-gray-400 force-sans">
                                                         <i className="fas fa-box-open text-5xl mb-4 text-gray-200"></i>
                                                         <p className="text-lg font-medium">কোনো বিস্তারিত তথ্য পাওয়া যায়নি</p>
                                                     </td>
@@ -611,19 +652,20 @@
                                             ) : (
                                                 filteredData.map((item) => (
                                                     <tr key={item.id} className={`hover:bg-indigo-50/40 transition-colors ${item.status === 'Resolved' ? 'bg-emerald-50/30' : 'bg-white'}`}>
-                                                        <td className="p-4 align-top font-bold text-gray-800">{item.office}</td>
-                                                        <td className="p-4 align-top whitespace-nowrap">
+                                                        <td className={`p-4 align-top font-bold text-gray-800 ${textClass}`}>{item.office}</td>
+                                                        <td className={`p-4 align-top whitespace-nowrap ${textClass}`}>
                                                             <div className="text-gray-900 font-bold">{item.year}</div>
                                                             <div className="text-indigo-500 font-medium text-xs mt-1 bg-indigo-50 inline-block px-2 py-0.5 rounded">অনু নং: {item.para}</div>
                                                         </td>
-                                                        <td className="p-4 align-top">
-                                                            <p className="text-gray-600 line-clamp-3 leading-relaxed" title={item.title}>{item.title}</p>
+                                                        <td className={`p-4 align-top ${textClass}`}>
+                                                            <p className="text-gray-700 line-clamp-3 leading-relaxed" title={item.title}>{item.title}</p>
                                                         </td>
-                                                        <td className="p-4 align-top text-gray-600 font-medium">
+                                                        <td className={`p-4 align-top text-gray-600 font-medium ${textClass}`}>
                                                             {item.category}
                                                         </td>
                                                         <td className="p-4 align-top text-center">
-                                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap shadow-sm border ${
+                                                            {/* Explicitly adding force-sans to Badges so they never use SutonnyMJ */}
+                                                            <span className={`force-sans inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap shadow-sm border ${
                                                                 item.type === 'SFI' ? 'bg-red-50 text-red-700 border-red-200' : 
                                                                 item.type === 'Non-SFI' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                                                                 'bg-purple-50 text-purple-700 border-purple-200'
@@ -631,13 +673,13 @@
                                                                 {item.type}
                                                             </span>
                                                         </td>
-                                                        <td className="p-4 align-top text-right font-mono font-bold text-gray-700">
+                                                        <td className={`p-4 align-top text-right font-mono font-bold text-gray-700 ${textClass}`}>
                                                             {item.amount.toLocaleString('en-IN')}
                                                         </td>
-                                                        <td className="p-4 align-top text-center text-gray-500 font-medium">
+                                                        <td className={`p-4 align-top text-center text-gray-500 font-medium ${textClass}`}>
                                                             {item.zone}
                                                         </td>
-                                                        <td className="p-4 align-top text-center">
+                                                        <td className="p-4 align-top text-center force-sans">
                                                             {item.status === 'Resolved' ? (
                                                                 <button onClick={() => toggleResolve(item.id)} className="inline-flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-500 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border border-gray-200 hover:text-red-500">
                                                                     <i className="fas fa-undo"></i> বাতিল
@@ -658,6 +700,16 @@
                         )}
 
                     </main>
+
+                    {/* Developer Credit - Main Dashboard Footer */}
+                    <footer className="mt-auto py-6 bg-white border-t border-gray-200 text-center animate-fade-in">
+                        <p className="text-gray-500 font-medium text-sm flex items-center justify-center gap-1.5">
+                            <i className="fas fa-laptop-code text-indigo-500"></i> 
+                            Developed by 
+                            <span className="font-bold text-indigo-700 hover:text-indigo-800 transition-colors cursor-default">Md. Ohidur Rahman</span>
+                        </p>
+                        <p className="text-gray-400 text-xs mt-1">Assistant Director (Audit), BPDB</p>
+                    </footer>
                 </div>
             );
         }
