@@ -8,574 +8,662 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- React & ReactDOM (via CDN) -->
+    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- Babel (To compile JSX in browser) -->
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- FontAwesome Icons -->
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- SheetJS (For reading Excel files directly) -->
+    <!-- SheetJS (Excel Parser) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap');
+        body { 
+            font-family: 'Hind Siliguri', 'Segoe UI', Tahoma, sans-serif; 
+            background-color: #f0f4f8; 
+        }
+        .animate-fade-in { animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Modern Scrollbar */
+        ::-webkit-scrollbar { height: 8px; width: 8px; }
+        ::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        /* Glass effect */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useMemo, useEffect, useRef } = React;
+        const { useState, useMemo, useEffect } = React;
 
-        // --- Authentication Mock ---
-        const users = {
-          'admin': { role: 'central', zone: 'all', name: 'Central Admin (Director)' },
-          'dhaka': { role: 'zone', zone: 'ঢাকা', name: 'Dhaka Zone Admin' },
-          'ctg': { role: 'zone', zone: 'চট্টগ্রাম', name: 'Chittagong Zone Admin' },
-          'mymensingh': { role: 'zone', zone: 'ময়মনসিংহ', name: 'Mymensingh Zone Admin' },
-          'comilla': { role: 'zone', zone: 'কুমিল্লা', name: 'Comilla Zone Admin' },
-          'sylhet': { role: 'zone', zone: 'সিলেট', name: 'Sylhet Zone Admin' },
-          'fapad': { role: 'zone', zone: 'ফাপাড', name: 'FAPAD Admin' },
-        };
-
-        // --- Smart Category Filler Logic ---
-        const assignCategory = (title, currentCategory) => {
-          if (currentCategory && currentCategory.trim() !== '') return currentCategory.trim();
-          const t = title.toLowerCase();
-          if (t.includes('বকেয়া') || t.includes('অনাদায়') || t.includes('বিল')) return 'বকেয়া সংক্রান্ত';
-          if (t.includes('ক্রয়') || t.includes('দরপত্র') || t.includes('টেন্ডার') || t.includes('প্যাকেজ') || t.includes('মালামাল') || t.includes('স্টোর')) return 'টেন্ডার ও ক্রয়';
-          if (t.includes('ভ্যাট') || t.includes('আয়কর') || t.includes('কর') || t.includes('উৎস কর')) return 'ভ্যাট ও আয়কর';
-          if (t.includes('অতিরিক্ত') || t.includes('অপচয়') || t.includes('ক্ষতি') || t.includes('আত্মসাৎ')) return 'আর্থিক ক্ষতি/অতিরিক্ত ব্যয়';
-          if (t.includes('ভাতা') || t.includes('বেতন') || t.includes('টিএ') || t.includes('ডিএ') || t.includes('পেনশন') || t.includes('বোনাস')) return 'বেতন ও ভাতা';
-          if (t.includes('বিধি') || t.includes('অনিয়মিত') || t.includes('অনুমোদন')) return 'আর্থিক বিধি লঙ্ঘন';
-          if (t.includes('মিটার') || t.includes('সংযোগ') || t.includes('লাইন')) return 'মিটার ও সংযোগ';
-          return 'বিবিধ (Miscellaneous)';
+        // --- Mock Users for Login ---
+        const USERS = {
+            'admin': { password: '123', role: 'central', zone: 'All', name: 'সেন্ট্রাল এডমিন' },
+            'dhaka': { password: '123', role: 'zonal', zone: 'ঢাকা', name: 'ঢাকা জোন এডমিন' },
+            'chittagong': { password: '123', role: 'zonal', zone: 'চট্টগ্রাম', name: 'চট্টগ্রাম জোন এডমিন' },
+            'sylhet': { password: '123', role: 'zonal', zone: 'সিলেট', name: 'সিলেট জোন এডমিন' },
+            'mymensingh': { password: '123', role: 'zonal', zone: 'ময়মনসিংহ', name: 'ময়মনসিংহ জোন এডমিন' },
+            'comilla': { password: '123', role: 'zonal', zone: 'কুমিল্লা', name: 'কুমিল্লা জোন এডমিন' },
+            'fapad': { password: '123', role: 'zonal', zone: 'ফাপাড', name: 'ফাপাড এডমিন' },
+            'annual': { password: '123', role: 'zonal', zone: 'বার্ষিক', name: 'বার্ষিক অডিট এডমিন' }
         };
 
         function App() {
-          const [currentUser, setCurrentUser] = useState(null);
-          const [loginInput, setLoginInput] = useState({ username: '', password: '' });
-          const [loginError, setLoginError] = useState('');
-
-          const [objections, setObjections] = useState([]);
-          const [loading, setLoading] = useState(false);
-          const [autoSyncStatus, setAutoSyncStatus] = useState('');
-
-          // Filters State
-          const [filterZone, setFilterZone] = useState('All');
-          const [filterType, setFilterType] = useState('All');
-          const [filterYear, setFilterYear] = useState('All');
-          const [filterCategory, setFilterCategory] = useState('All');
-          const [filterOffice, setFilterOffice] = useState('All'); // New state for Specific Office Selection
-          
-          // View Mode State
-          const [viewMode, setViewMode] = useState('summary'); // 'summary' or 'details' or 'none'
-
-          const fileInputRef = useRef(null);
-
-          // Clear Office filter automatically when other main filters change
-          useEffect(() => {
-              setFilterOffice('All');
-          }, [filterZone, filterType, filterYear, filterCategory]);
-
-          // Reusable Excel Data processing logic
-          const processExcelData = (rows, isAutoLoad = false) => {
-            const existingData = JSON.parse(localStorage.getItem('bpdb_audit_db') || '[]');
-            const resolvedIds = new Set(existingData.filter(o => o.status === 'Resolved').map(o => o.id));
-
-            // Assuming the first row is headers, we start from index 1
-            const parsedData = rows.slice(1).map((row, index) => {
-              if(!row || row.length < 5) return null;
-              
-              // Safely convert everything to string to avoid errors with empty cells or numbers
-              const office = (row[1] || 'Unknown').toString().trim();
-              const year = (row[2] || 'Unknown').toString().trim();
-              const para = (row[3] || 'Unknown').toString().trim();
-              const title = (row[4] || '').toString().trim();
-              const amountStr = (row[5] || '0').toString().replace(/,/g, '');
-              const typeStr = (row[7] || '').toString();
-              const rawCategory = (row[8] || '').toString().trim();
-              const zoneStr = (row[9] || 'অন্যান্য').toString().trim();
-              
-              const stableId = `OBJ-${office}-${year}-${para}-${index}`.replace(/\s+/g, '-');
-
-              return {
-                id: stableId,
-                office: office,
-                year: year,
-                para: para,
-                title: title,
-                amount: parseFloat(amountStr) || 0,
-                type: typeStr.includes('এসএফআই') || typeStr.includes('SFI') ? (typeStr.includes('নন') || typeStr.toLowerCase().includes('non') ? 'Non-SFI' : 'SFI') : 'SFI',
-                category: assignCategory(title, rawCategory),
-                zone: zoneStr,
-                status: resolvedIds.has(stableId) ? 'Resolved' : 'Active'
-              };
-            }).filter(Boolean);
-
-            setObjections(parsedData);
-            localStorage.setItem('bpdb_audit_db', JSON.stringify(parsedData));
+            const [currentUser, setCurrentUser] = useState(null);
             
-            if(!isAutoLoad) {
-               alert('সফলভাবে এক্সেল ফাইল থেকে ডাটাবেস আপডেট হয়েছে!');
-            }
-          };
+            // --- Login State ---
+            const [username, setUsername] = useState('');
+            const [password, setPassword] = useState('');
+            const [loginError, setLoginError] = useState('');
 
-          // On Load Component
-          useEffect(() => {
-            const savedData = localStorage.getItem('bpdb_audit_db');
-            if (savedData) {
-              setObjections(JSON.parse(savedData));
-            }
+            // --- Dashboard State ---
+            const [objections, setObjections] = useState([]);
+            const [resolvedIds, setResolvedIds] = useState(new Set());
+            const [activeTab, setActiveTab] = useState('summary'); 
+            const [isAutoLoading, setIsAutoLoading] = useState(false); // For showing spinner
+            
+            const [filterZone, setFilterZone] = useState('All');
+            const [filterType, setFilterType] = useState('All');
+            const [filterCategory, setFilterCategory] = useState('All'); 
+            const [filterYear, setFilterYear] = useState('All');
+            const [searchTerm, setSearchTerm] = useState('');
 
-            // Auto Load Excel File
-            const attemptAutoLoad = async () => {
-              try {
-                setAutoSyncStatus('Checking for Excel file...');
-                const response = await fetch('./All (Office Wise).xlsx'); 
-                if (response.ok) {
-                  const arrayBuffer = await response.arrayBuffer();
-                  const data = new Uint8Array(arrayBuffer);
-                  const workbook = XLSX.read(data, {type: 'array'});
-                  const firstSheetName = workbook.SheetNames[0];
-                  const worksheet = workbook.Sheets[firstSheetName];
-                  const jsonRows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-                  
-                  processExcelData(jsonRows, true);
-                  setAutoSyncStatus('Auto-synced with Excel file!');
-                  setTimeout(() => setAutoSyncStatus(''), 3000);
-                } else {
-                  setAutoSyncStatus('');
+            // --- Auto Fetch File on Login ---
+            useEffect(() => {
+                if (currentUser) {
+                    autoLoadExcelFile();
                 }
-              } catch (error) {
-                console.log("Auto-fetch skipped (Likely due to browser local file security or file missing).");
-                setAutoSyncStatus('');
-              }
+            }, [currentUser]);
+
+            const autoLoadExcelFile = async () => {
+                setIsAutoLoading(true);
+                try {
+                    // এটি গিটহাব বা লোকাল সার্ভার থেকে ফাইলটি ফেচ করবে
+                    const response = await fetch('All (Office Wise).xlsx'); 
+                    if (response.ok) {
+                        const arrayBuffer = await response.arrayBuffer();
+                        const wb = XLSX.read(arrayBuffer, { type: 'array' });
+                        processExcelData(wb);
+                    } else {
+                        console.warn("Auto-load failed: 'All (Office Wise).xlsx' not found on the server.");
+                    }
+                } catch (error) {
+                    console.error("Error auto-loading file:", error);
+                } finally {
+                    setIsAutoLoading(false);
+                }
             };
 
-            attemptAutoLoad();
-          }, []);
-
-          const handleLogin = (e) => {
-            e.preventDefault();
-            const user = users[loginInput.username.toLowerCase()];
-            if (user && loginInput.password === '1234') { 
-              setCurrentUser(user);
-              setFilterZone(user.role === 'central' ? 'All' : user.zone);
-              setLoginError('');
-            } else {
-              setLoginError('ভুল ইউজারনেম বা পাসওয়ার্ড! (ডেমো পাসওয়ার্ড: 1234)');
-            }
-          };
-
-          const handleFileUpload = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            setLoading(true);
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              try {
-                const data = new Uint8Array(event.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                const jsonRows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-                
-                processExcelData(jsonRows, false);
-              } catch(error) {
-                alert("এক্সেল ফাইল রিড করতে সমস্যা হয়েছে! সঠিক ফাইল নির্বাচন করেছেন কিনা চেক করুন।");
-              }
-              setLoading(false);
+            // Handle Login
+            const handleLogin = (e) => {
+                e.preventDefault();
+                const user = USERS[username.toLowerCase()];
+                if (user && user.password === password) {
+                    setCurrentUser(user);
+                    setFilterZone(user.role === 'central' ? 'All' : user.zone);
+                    setLoginError('');
+                } else {
+                    setLoginError('ইউজার আইডি বা পাসওয়ার্ড ভুল হয়েছে!');
+                }
             };
-            reader.readAsArrayBuffer(file);
-          };
 
-          const resolveObjection = (id) => {
-            if(window.confirm('আপনি কি নিশ্চিত যে এই আপত্তিটি নিস্পত্তি হয়েছে?')) {
-              const updated = objections.map(obj => obj.id === id ? { ...obj, status: 'Resolved' } : obj);
-              setObjections(updated);
-              localStorage.setItem('bpdb_audit_db', JSON.stringify(updated));
-            }
-          };
-
-          // --- Filtering Logic ---
-          // 1. Data filtered by General Filters (Zone, Year, Category, Type) - Used for Summary
-          const preOfficeFilteredData = useMemo(() => {
-            return objections.filter(obj => {
-              const matchZone = filterZone === 'All' ? true : obj.zone.includes(filterZone);
-              const matchType = filterType === 'All' ? true : obj.type === filterType;
-              const matchYear = filterYear === 'All' ? true : obj.year === filterYear;
-              const matchCategory = filterCategory === 'All' ? true : obj.category === filterCategory;
-              const isActive = obj.status === 'Active';
-              return matchZone && matchType && matchYear && matchCategory && isActive;
-            });
-          }, [objections, filterZone, filterType, filterYear, filterCategory]);
-
-          // 2. Data filtered by all filters INCLUDING Office - Used for Details Table and Top Cards
-          const filteredData = useMemo(() => {
-              return preOfficeFilteredData.filter(obj => filterOffice === 'All' ? true : obj.office === filterOffice);
-          }, [preOfficeFilteredData, filterOffice]);
-
-
-          // --- Summary Generation Logic ---
-          const summaryData = useMemo(() => {
-              const summary = {};
-              preOfficeFilteredData.forEach(obj => {
-                  if (!summary[obj.office]) {
-                      summary[obj.office] = { office: obj.office, zone: obj.zone, sfi: 0, nonSfi: 0, total: 0 };
-                  }
-                  if (obj.type === 'SFI') summary[obj.office].sfi++;
-                  else summary[obj.office].nonSfi++;
-                  
-                  summary[obj.office].total++;
-              });
-              // Return as array sorted by total objections (highest first)
-              return Object.values(summary).sort((a, b) => b.total - a.total);
-          }, [preOfficeFilteredData]);
-
-          // Metrics based on Final Filtered Data
-          const resolvedCount = objections.filter(o => o.status === 'Resolved' && (filterZone === 'All' ? true : o.zone.includes(filterZone))).length;
-          const uniqueYears = [...new Set(objections.map(o => o.year))].filter(Boolean).sort();
-          const uniqueCategories = [...new Set(objections.map(o => o.category))].filter(Boolean).sort();
-
-          // --- Login Screen ---
-          if (!currentUser) {
-            return (
-              <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md border-t-4 border-blue-600">
-                  <div className="text-center mb-8">
-                    <i className="fas fa-shield-alt text-5xl text-blue-600 mb-3"></i>
-                    <h1 className="text-2xl font-bold text-gray-800">BPDB Audit Database</h1>
-                    <p className="text-gray-500 mt-2 text-sm">Central Admin & Zone Access Portal</p>
-                  </div>
-                  
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ইউজারনেম (e.g., admin, dhaka, ctg)</label>
-                      <input type="text" required
-                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        value={loginInput.username} onChange={e => setLoginInput({ ...loginInput, username: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">পাসওয়ার্ড</label>
-                      <input type="password" required
-                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        value={loginInput.password} onChange={e => setLoginInput({ ...loginInput, password: e.target.value })}
-                      />
-                    </div>
-                    {loginError && <p className="text-red-500 text-sm">{loginError}</p>}
-                    <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
-                      লগইন করুন
-                    </button>
-                  </form>
-                </div>
-              </div>
-            );
-          }
-
-          // --- Dashboard View ---
-          return (
-            <div className="min-h-screen bg-gray-100 font-sans pb-10">
-              <nav className="bg-blue-800 text-white shadow-md px-6 py-4 flex justify-between items-center sticky top-0 z-20">
-                <div className="flex items-center gap-3">
-                  <i className="fas fa-database text-2xl text-yellow-400"></i>
-                  <h1 className="text-xl font-bold hidden sm:block">Uniform Audit Database - BPDB</h1>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 bg-blue-700 px-3 py-1.5 rounded-full text-sm">
-                    <i className="fas fa-user"></i>
-                    <span>{currentUser.name}</span>
-                  </div>
-                  <button onClick={() => setCurrentUser(null)} className="hover:text-red-300 transition-colors" title="লগআউট">
-                    <i className="fas fa-sign-out-alt text-xl"></i>
-                  </button>
-                </div>
-              </nav>
-
-              <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+            // Reusable Data Processing Function
+            const processExcelData = (wb) => {
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const rawData = XLSX.utils.sheet_to_json(ws, { defval: "" });
                 
-                {/* File Upload UI */}
-                {currentUser.role === 'central' && (
-                  <div className="bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div>
-                      <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                        <i className="fas fa-sync-alt text-blue-600"></i> Database Sync / Upload
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        "All (Office Wise).xlsx" ফোল্ডারে থাকলে অটোমেটিক লোড হবে। {autoSyncStatus && <span className="text-green-600 font-bold">({autoSyncStatus})</span>}
-                      </p>
-                    </div>
-                    <div className="relative">
-                      <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-                      <button 
-                        onClick={() => fileInputRef.current.click()}
-                        disabled={loading}
-                        className="bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors text-sm"
-                      >
-                        <i className="fas fa-file-excel"></i> {loading ? 'আপলোড হচ্ছে...' : 'ম্যানুয়ালি Excel আপলোড'}
-                      </button>
-                    </div>
-                  </div>
-                )}
+                const parsedData = rawData.map((row, index) => {
+                    const office = (row["দপ্তরের নাম"] || row["Office"] || 'Unknown').toString().trim();
+                    if (office === 'Unknown' && !row["অনু নং"]) return null; 
 
-                {/* Main Filters UI */}
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 space-y-5">
-                  <div className="flex items-center gap-2 border-b pb-3 text-gray-700">
-                    <i className="fas fa-filter text-blue-600"></i>
-                    <h2 className="text-lg font-bold">ড্যাশবোর্ড ফিল্টার</h2>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-sm font-bold text-gray-600 mb-2 block">আপত্তির ধরন (Type):</label>
-                        <div className="flex flex-wrap gap-2">
-                          {['All', 'SFI', 'Non-SFI'].map(type => (
-                            <button key={type} onClick={() => setFilterType(type)}
-                              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${filterType === type ? 'bg-blue-600 text-white shadow' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                            >
-                              {type === 'All' ? 'সকল আপত্তি' : type}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-sm font-bold text-gray-600 mb-2 block">জোন নির্বাচন (Zone):</label>
-                        <div className="flex flex-wrap gap-2">
-                          {['All', 'ঢাকা', 'চট্টগ্রাম', 'ময়মনসিংহ', 'কুমিল্লা', 'সিলেট', 'ফাপাড'].map(zone => {
-                            const isDisabled = currentUser.role !== 'central' && !zone.includes(currentUser.zone) && zone !== 'All';
-                            if (currentUser.role !== 'central' && zone === 'All') return null; 
-
-                            return (
-                              <button key={zone} 
-                                onClick={() => setFilterZone(zone)}
-                                disabled={isDisabled}
-                                className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${filterZone === zone ? 'bg-indigo-600 text-white shadow' : isDisabled ? 'bg-gray-50 text-gray-300 cursor-not-allowed border' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border'}`}
-                              >
-                                {zone === 'All' ? 'সকল জোন' : zone}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                       <div>
-                        <label className="text-sm font-bold text-gray-600 mb-2 block flex items-center gap-1"><i className="fas fa-calendar-alt"></i> নিরীক্ষা বছর:</label>
-                        <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5">
-                          <option value="All">সকল বছর</option>
-                          {uniqueYears.map(year => <option key={year} value={year}>{year}</option>)}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="text-sm font-bold text-gray-600 mb-2 block flex items-center gap-1"><i className="fas fa-list"></i> আপত্তির ক্যাটাগরি:</label>
-                        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5">
-                          <option value="All">সকল ক্যাটাগরি</option>
-                          {uniqueCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Metrics Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500 flex flex-col justify-center relative overflow-hidden">
-                    <p className="text-gray-500 text-sm font-semibold">বর্তমান ফিল্টারে আপত্তি</p>
-                    <p className="text-3xl font-bold text-gray-800 z-10">{filteredData.length}</p>
-                    <i className="fas fa-file-invoice absolute -bottom-2 -right-2 text-6xl text-blue-50 z-0"></i>
-                  </div>
-                  <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-red-500 flex flex-col justify-center relative overflow-hidden">
-                    <p className="text-gray-500 text-sm font-semibold">মোট SFI (ফিল্টারকৃত)</p>
-                    <p className="text-3xl font-bold text-gray-800 z-10">{filteredData.filter(d => d.type === 'SFI').length}</p>
-                    <i className="fas fa-exclamation-triangle absolute -bottom-2 -right-2 text-6xl text-red-50 z-0"></i>
-                  </div>
-                  <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-yellow-500 flex flex-col justify-center relative overflow-hidden">
-                    <p className="text-gray-500 text-sm font-semibold">মোট Non-SFI (ফিল্টারকৃত)</p>
-                    <p className="text-3xl font-bold text-gray-800 z-10">{filteredData.filter(d => d.type === 'Non-SFI').length}</p>
-                    <i className="fas fa-info-circle absolute -bottom-2 -right-2 text-6xl text-yellow-50 z-0"></i>
-                  </div>
-                  <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500 flex flex-col justify-center relative overflow-hidden">
-                    <p className="text-gray-500 text-sm font-semibold">নিস্পন্ন আপত্তি (আপনার জোনে)</p>
-                    <p className="text-3xl font-bold text-green-600 flex items-center gap-2 z-10">
-                      {resolvedCount} <i className="fas fa-check-circle"></i>
-                    </p>
-                    <i className="fas fa-check-double absolute -bottom-2 -right-2 text-6xl text-green-50 z-0"></i>
-                  </div>
-                </div>
-
-                {/* View Toggle Buttons */}
-                <div className="flex flex-col sm:flex-row justify-center gap-4 py-2">
-                  <button 
-                    onClick={() => setViewMode(viewMode === 'summary' ? 'none' : 'summary')}
-                    className={`inline-flex items-center justify-center gap-2 font-bold py-3 px-8 rounded-full shadow transition-transform transform hover:scale-105 ${viewMode === 'summary' ? 'bg-blue-700 text-white ring-4 ring-blue-200' : 'bg-white text-blue-700 border-2 border-blue-600 hover:bg-blue-50'}`}
-                  >
-                    <i className="fas fa-chart-pie"></i> {viewMode === 'summary' ? 'Summary লুকান' : 'Summary দেখুন'}
-                  </button>
-                  <button 
-                    onClick={() => setViewMode(viewMode === 'details' ? 'none' : 'details')}
-                    className={`inline-flex items-center justify-center gap-2 font-bold py-3 px-8 rounded-full shadow transition-transform transform hover:scale-105 ${viewMode === 'details' ? 'bg-indigo-700 text-white ring-4 ring-indigo-200' : 'bg-white text-indigo-700 border-2 border-indigo-600 hover:bg-indigo-50'}`}
-                  >
-                    <i className="fas fa-list-ul"></i> {viewMode === 'details' ? 'Details লুকান' : 'Details দেখুন'}
-                  </button>
-                </div>
-
-                {/* ---------------- SUMMARY TABLE VIEW ---------------- */}
-                {viewMode === 'summary' && (
-                  <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden mb-6 animate-fade-in-up">
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-blue-200 flex justify-between items-center">
-                      <h3 className="font-bold text-blue-900 flex items-center gap-2"><i className="fas fa-table"></i> দপ্তর ভিত্তিক সামারি (Summary)</h3>
-                      <span className="text-xs bg-blue-200 text-blue-800 px-3 py-1.5 rounded-full font-bold">{summaryData.length} টি দপ্তর</span>
-                    </div>
-                    <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-                      <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 z-10 shadow-sm">
-                          <tr>
-                            <th className="p-3 text-center">ক্রমিক নং</th>
-                            <th className="p-3">দপ্তরের নাম (ক্লিক করে বিস্তারিত দেখুন)</th>
-                            <th className="p-3 text-center">জোন</th>
-                            <th className="p-3 text-center">Non-SFI (সাধারণ)</th>
-                            <th className="p-3 text-center">SFI (অগ্রিম)</th>
-                            <th className="p-3 text-center">মোট আপত্তি</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {summaryData.length === 0 ? (
-                            <tr><td colSpan="6" className="text-center p-8 text-gray-500 font-medium">কোনো ডাটা পাওয়া যায়নি। ফিল্টার পরিবর্তন করুন।</td></tr>
-                          ) : (
-                            summaryData.map((row, index) => (
-                              <tr key={index} className="border-b hover:bg-blue-50 transition-colors">
-                                <td className="p-3 text-center font-medium text-gray-500">{index + 1}</td>
-                                <td 
-                                    className="p-3 font-bold text-blue-600 cursor-pointer hover:text-blue-800 hover:underline flex items-center gap-2"
-                                    onClick={() => { setFilterOffice(row.office); setViewMode('details'); }}
-                                    title="এই দপ্তরের বিস্তারিত আপত্তি দেখতে ক্লিক করুন"
-                                >
-                                    <i className="fas fa-external-link-alt text-xs opacity-50"></i> {row.office}
-                                </td>
-                                <td className="p-3 text-center text-gray-600">{row.zone}</td>
-                                <td className="p-3 text-center font-bold text-yellow-600">{row.nonSfi}</td>
-                                <td className="p-3 text-center font-bold text-red-600">{row.sfi}</td>
-                                <td className="p-3 text-center font-extrabold text-gray-800 text-base">{row.total}</td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-
-                {/* ---------------- DETAILS TABLE VIEW ---------------- */}
-                {viewMode === 'details' && (
-                  <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden mb-6 animate-fade-in-up">
-                    <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                      <h3 className="font-bold text-gray-700 flex items-center gap-2"><i className="fas fa-file-alt text-indigo-500"></i> বিস্তারিত আপত্তি সমূহ</h3>
-                      
-                      <div className="flex flex-wrap items-center gap-2">
-                        {/* Office Filter Active Chip */}
-                        {filterOffice !== 'All' && (
-                            <button 
-                                onClick={() => { setFilterOffice('All'); setViewMode('summary'); }}
-                                className="text-xs bg-purple-100 border border-purple-300 text-purple-800 px-3 py-1.5 rounded-full font-bold flex items-center gap-2 hover:bg-purple-200 hover:text-purple-900 transition-colors shadow-sm"
-                                title="দপ্তরের ফিল্টার মুছে ফেলুন"
-                            >
-                                <span>দপ্তর: {filterOffice}</span>
-                                <i className="fas fa-times-circle text-sm"></i>
-                            </button>
-                        )}
-                        <span className="text-xs bg-indigo-100 text-indigo-800 px-3 py-1.5 rounded-full font-bold shadow-sm">{filteredData.length} টি রেকর্ড</span>
-                      </div>
-                    </div>
+                    const year = (row["নিরীক্ষা বছর"] || row["Year"] || 'Unknown').toString().trim();
+                    const para = (row["অনু নং"] || row["Para"] || 'Unknown').toString().trim();
+                    const title = (row["আপত্তির শিরোনাম"] || row["Title"] || '').toString().trim();
+                    const amountStr = (row["জড়িত টাকার পরিমান"] || row["জড়িত টাকার পরিমাণ"] || row["Amount"] || '0').toString().replace(/,/g, '');
                     
-                    <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-                      <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 z-10 shadow-sm border-b">
-                          <tr>
-                            <th className="p-3">দপ্তরের নাম</th>
-                            <th className="p-3">বছর ও অনু নং</th>
-                            <th className="p-3 w-1/3">শিরোনাম ও ক্যাটাগরি</th>
-                            <th className="p-3 text-center">ধরণ</th>
-                            <th className="p-3 text-right">টাকার পরিমান</th>
-                            <th className="p-3 text-center">অ্যাকশন</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredData.length === 0 ? (
-                            <tr><td colSpan="6" className="text-center p-8 text-gray-500 font-medium">কোনো ডাটা পাওয়া যায়নি। ফিল্টার পরিবর্তন করুন।</td></tr>
-                          ) : (
-                            filteredData.map((item) => (
-                              <tr key={item.id} className="border-b hover:bg-gray-50 transition-colors">
-                                <td className="p-3 align-top font-bold text-gray-800">
-                                    {item.office}
-                                    <div className="mt-1"><span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded font-normal">জোন: {item.zone}</span></div>
-                                </td>
-                                <td className="p-3 align-top whitespace-nowrap font-medium">
-                                    {item.year}
-                                    <div className="text-gray-500 text-xs mt-1">অনু: <span className="font-bold">{item.para}</span></div>
-                                </td>
-                                <td className="p-3 align-top">
-                                  <p className="text-gray-800 leading-relaxed mb-2 font-medium">{item.title}</p>
-                                  <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded border border-blue-200 font-semibold">
-                                    <i className="fas fa-tag"></i> {item.category}
-                                  </span>
-                                </td>
-                                <td className="p-3 align-top text-center">
-                                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold whitespace-nowrap shadow-sm ${
-                                    item.type === 'SFI' ? 'bg-red-100 text-red-800 border border-red-300' : 'bg-yellow-100 text-yellow-800 border border-yellow-300'
-                                  }`}>
-                                    {item.type}
-                                  </span>
-                                </td>
-                                <td className="p-3 align-top text-right font-extrabold text-gray-800 whitespace-nowrap text-base">
-                                  ৳ {item.amount.toLocaleString('en-IN')}
-                                </td>
-                                <td className="p-3 align-top text-center">
-                                  <button 
-                                    onClick={() => resolveObjection(item.id)}
-                                    className="inline-flex items-center gap-1 bg-green-50 hover:bg-green-600 hover:text-white text-green-700 border border-green-300 px-3 py-1.5 rounded text-xs font-bold transition-all shadow-sm"
-                                    title="আপত্তিটি নিস্পত্তি হিসেবে মার্ক করুন"
-                                  >
-                                    <i className="fas fa-check-circle"></i> নিস্পত্তি
-                                  </button>
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
+                    let typeStr = (row["আপত্তির ধরণ"] || row["Type"] || row["আপত্তির ধরন"] || '').toString();
+                    let rawCategory = (row["ক্যাটাগরী"] || row["ক্যাটাগরি"] || row["Category"] || 'সাধারণ').toString().trim();
+                    const zoneStr = (row["জোন"] || row["Zone"] || 'অন্যান্য').toString().trim();
+                    
+                    const stableId = `OBJ-${office}-${year}-${para}-${index}`.replace(/\s+/g, '-');
 
-              </div>
-            </div>
-          );
+                    let finalType = 'SFI';
+                    if (typeStr.includes('বার্ষিক') || typeStr.toLowerCase().includes('annual')) {
+                        finalType = 'বার্ষিক রিপোর্টভূক্ত';
+                    } else if (typeStr.includes('এসএফআই') || typeStr.includes('SFI')) {
+                        finalType = (typeStr.includes('নন') || typeStr.toLowerCase().includes('non')) ? 'Non-SFI' : 'SFI';
+                    } else if (typeStr.includes('নন') || typeStr.toLowerCase().includes('non')) {
+                        finalType = 'Non-SFI';
+                    }
+
+                    if(rawCategory === '') rawCategory = 'সাধারণ';
+
+                    return {
+                        id: stableId,
+                        office: office,
+                        year: year,
+                        para: para,
+                        title: title,
+                        amount: parseFloat(amountStr) || 0,
+                        type: finalType,
+                        category: rawCategory,
+                        zone: zoneStr,
+                        status: resolvedIds.has(stableId) ? 'Resolved' : 'Active'
+                    };
+                }).filter(Boolean);
+
+                setObjections(parsedData);
+            };
+
+            // Manual Excel File Upload (Fallback)
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    const bstr = evt.target.result;
+                    const wb = XLSX.read(bstr, { type: 'binary' });
+                    processExcelData(wb);
+                    alert("সফলভাবে ম্যানুয়াল ডাটা লোড হয়েছে!");
+                };
+                reader.readAsBinaryString(file);
+            };
+
+            const toggleResolve = (id) => {
+                const newResolved = new Set(resolvedIds);
+                if (newResolved.has(id)) {
+                    newResolved.delete(id);
+                } else {
+                    newResolved.add(id);
+                }
+                setResolvedIds(newResolved);
+                
+                setObjections(objections.map(obj => 
+                    obj.id === id ? { ...obj, status: newResolved.has(id) ? 'Resolved' : 'Active' } : obj
+                ));
+            };
+
+            // Handles clicking an office in the summary table
+            const handleOfficeClick = (officeName) => {
+                setSearchTerm(officeName); 
+                setActiveTab('details'); 
+            };
+
+            // Switch tabs and reset search if going back to summary
+            const handleTabSwitch = (tabName) => {
+                if (tabName === 'summary') {
+                    setSearchTerm(''); 
+                }
+                setActiveTab(tabName);
+            };
+
+            // --- Filtering Logic ---
+            const filteredData = useMemo(() => {
+                return objections.filter(obj => {
+                    let matchZone = true;
+                    if (filterZone !== 'All') {
+                        if (filterZone === 'বার্ষিক') {
+                            matchZone = obj.zone.includes('বার্ষিক') || obj.type === 'বার্ষিক রিপোর্টভূক্ত';
+                        } else {
+                            matchZone = obj.zone.includes(filterZone);
+                        }
+                    }
+                    
+                    const matchType = filterType === 'All' ? true : obj.type === filterType;
+                    const matchCategory = filterCategory === 'All' ? true : obj.category === filterCategory;
+                    const matchYear = filterYear === 'All' ? true : obj.year === filterYear;
+                    
+                    const search = searchTerm.toLowerCase();
+                    const matchSearch = obj.office.toLowerCase().includes(search) || 
+                                        obj.title.toLowerCase().includes(search) || 
+                                        obj.para.toString().includes(search);
+                                        
+                    return matchZone && matchType && matchYear && matchCategory && matchSearch;
+                });
+            }, [objections, filterZone, filterType, filterYear, filterCategory, searchTerm]);
+
+            // --- Summary Aggregation Data ---
+            const summaryData = useMemo(() => {
+                const grouped = {};
+                filteredData.forEach(item => {
+                    if (!grouped[item.office]) {
+                        grouped[item.office] = { office: item.office, zone: item.zone, total: 0, sfi: 0, nonsfi: 0, annual: 0, resolved: 0 };
+                    }
+                    grouped[item.office].total += 1;
+                    if (item.type === 'SFI') grouped[item.office].sfi += 1;
+                    if (item.type === 'Non-SFI') grouped[item.office].nonsfi += 1;
+                    if (item.type === 'বার্ষিক রিপোর্টভূক্ত') grouped[item.office].annual += 1;
+                    if (item.status === 'Resolved') grouped[item.office].resolved += 1;
+                });
+                return Object.values(grouped);
+            }, [filteredData]);
+
+            // Dropdown Options
+            const uniqueYears = ['All', ...new Set(objections.map(o => o.year).filter(y => y !== 'Unknown'))].sort();
+            const uniqueCategories = [...new Set(objections.map(o => o.category).filter(c => c && c !== 'Unknown'))].sort();
+            
+            // Stats
+            const stats = {
+                total: filteredData.length,
+                sfi: filteredData.filter(d => d.type === 'SFI').length,
+                nonsfi: filteredData.filter(d => d.type === 'Non-SFI').length,
+                annual: filteredData.filter(d => d.type === 'বার্ষিক রিপোর্টভূক্ত').length,
+                resolved: filteredData.filter(d => d.status === 'Resolved').length
+            };
+
+
+            // --- UI RENDER ---
+
+            // 1. Login Screen
+            if (!currentUser) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-blue-800 to-slate-900 p-4">
+                        <div className="glass-card p-10 rounded-3xl shadow-2xl w-full max-w-md animate-fade-in relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-400 to-indigo-500"></div>
+                            <div className="text-center mb-8">
+                                <div className="bg-gradient-to-br from-blue-100 to-indigo-100 p-5 rounded-full inline-flex items-center justify-center mb-5 shadow-inner">
+                                    <i className="fas fa-bolt text-4xl text-indigo-600"></i>
+                                </div>
+                                <h2 className="text-3xl font-extrabold text-gray-800 tracking-tight">BPDB Audit Portal</h2>
+                                <p className="text-indigo-600 font-medium mt-1">বাংলাদেশ বিদ্যুৎ উন্নয়ন বোর্ড</p>
+                            </div>
+                            
+                            <form onSubmit={handleLogin} className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">ইউজার আইডি</label>
+                                    <input 
+                                        type="text" 
+                                        className="w-full border border-gray-200 bg-gray-50/50 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all shadow-sm"
+                                        placeholder="উদাঃ admin, dhaka..."
+                                        value={username}
+                                        onChange={e => setUsername(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">পাসওয়ার্ড</label>
+                                    <input 
+                                        type="password" 
+                                        className="w-full border border-gray-200 bg-gray-50/50 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all shadow-sm"
+                                        placeholder="পাসওয়ার্ড"
+                                        value={password}
+                                        onChange={e => setPassword(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                {loginError && <p className="text-red-500 text-sm font-bold text-center bg-red-50 p-2 rounded-lg">{loginError}</p>}
+                                <button type="submit" className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg hover:shadow-indigo-500/30 transform hover:-translate-y-0.5">
+                                    লগইন করুন <i className="fas fa-sign-in-alt ml-2"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+
+            // 2. Dashboard Screen
+            return (
+                <div className="min-h-screen flex flex-col">
+                    {/* Header */}
+                    <header className="bg-gradient-to-r from-slate-900 via-indigo-900 to-blue-900 text-white shadow-xl sticky top-0 z-30">
+                        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center p-4 gap-4">
+                            <div className="flex items-center gap-4">
+                                <div className="bg-white/10 backdrop-blur-md p-2.5 rounded-xl border border-white/20">
+                                    <i className="fas fa-shield-alt text-2xl text-blue-300"></i>
+                                </div>
+                                <div>
+                                    <h1 className="text-2xl font-bold tracking-wide flex items-center gap-2">
+                                        অডিট আপত্তি ড্যাশবোর্ড
+                                        {isAutoLoading && (
+                                            <span className="text-blue-300 text-xs font-normal animate-pulse bg-white/10 px-2 py-1 rounded-full">
+                                                <i className="fas fa-spinner fa-spin mr-1"></i> ডাটা লোড হচ্ছে...
+                                            </span>
+                                        )}
+                                    </h1>
+                                    <div className="flex items-center gap-2 text-indigo-200 text-xs mt-0.5">
+                                        <i className="fas fa-user-circle"></i>
+                                        <span>{currentUser.name} (রোল: {currentUser.role})</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <label className="cursor-pointer bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-sm px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 hover:shadow-lg" title="ম্যানুয়ালি ফাইল আপলোড করুন">
+                                    <i className="fas fa-cloud-upload-alt text-blue-300"></i> ম্যানুয়াল আপলোড
+                                    <input type="file" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleFileUpload} />
+                                </label>
+                                <button 
+                                    onClick={() => setCurrentUser(null)} 
+                                    className="bg-red-500/90 hover:bg-red-500 border border-red-400 px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg hover:shadow-red-500/30 flex items-center gap-2"
+                                >
+                                    <i className="fas fa-power-off"></i> লগআউট
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-6 space-y-6">
+                        
+                        {/* Beautiful Stats Cards */}
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 animate-fade-in">
+                            <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-sm hover:shadow-md border border-blue-100 p-5 transform transition-all hover:-translate-y-1">
+                                <div className="flex justify-between items-start mb-2">
+                                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">মোট আপত্তি</p>
+                                    <i className="fas fa-folder-open text-blue-400 opacity-50 text-xl"></i>
+                                </div>
+                                <p className="text-3xl font-black text-blue-900">{stats.total}</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-white to-red-50 rounded-2xl shadow-sm hover:shadow-md border border-red-100 p-5 transform transition-all hover:-translate-y-1">
+                                <div className="flex justify-between items-start mb-2">
+                                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">SFI</p>
+                                    <i className="fas fa-exclamation-triangle text-red-400 opacity-50 text-xl"></i>
+                                </div>
+                                <p className="text-3xl font-black text-red-600">{stats.sfi}</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-white to-amber-50 rounded-2xl shadow-sm hover:shadow-md border border-amber-100 p-5 transform transition-all hover:-translate-y-1">
+                                <div className="flex justify-between items-start mb-2">
+                                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Non-SFI</p>
+                                    <i className="fas fa-file-alt text-amber-400 opacity-50 text-xl"></i>
+                                </div>
+                                <p className="text-3xl font-black text-amber-600">{stats.nonsfi}</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-white to-purple-50 rounded-2xl shadow-sm hover:shadow-md border border-purple-100 p-5 transform transition-all hover:-translate-y-1">
+                                <div className="flex justify-between items-start mb-2">
+                                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">বার্ষিক</p>
+                                    <i className="fas fa-calendar-alt text-purple-400 opacity-50 text-xl"></i>
+                                </div>
+                                <p className="text-3xl font-black text-purple-600">{stats.annual}</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-sm hover:shadow-md border border-emerald-100 p-5 transform transition-all hover:-translate-y-1">
+                                <div className="flex justify-between items-start mb-2">
+                                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">নিষ্পন্ন</p>
+                                    <i className="fas fa-check-circle text-emerald-400 opacity-50 text-xl"></i>
+                                </div>
+                                <p className="text-3xl font-black text-emerald-600">{stats.resolved}</p>
+                            </div>
+                        </div>
+
+                        {/* Soft Filter Panel */}
+                        <div className="glass-card rounded-2xl shadow-sm p-6 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                                
+                                {/* Zone Filter */}
+                                <div>
+                                    <label className="text-sm font-bold text-gray-700 mb-2 block flex items-center gap-2">
+                                        <i className="fas fa-map-marker-alt text-indigo-500"></i> জোন নির্বাচন:
+                                    </label>
+                                    <select 
+                                        className="w-full border border-gray-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none text-sm bg-white shadow-sm transition-all hover:border-indigo-300"
+                                        value={filterZone}
+                                        onChange={(e) => setFilterZone(e.target.value)}
+                                        disabled={currentUser.role !== 'central'}
+                                    >
+                                        {currentUser.role === 'central' && <option value="All">সকল জোন</option>}
+                                        {currentUser.role !== 'central' ? (
+                                            <option value={currentUser.zone}>{currentUser.zone}</option>
+                                        ) : (
+                                            <>
+                                                <option value="ঢাকা">ঢাকা</option>
+                                                <option value="চট্টগ্রাম">চট্টগ্রাম</option>
+                                                <option value="ময়মনসিংহ">ময়মনসিংহ</option>
+                                                <option value="কুমিল্লা">কুমিল্লা</option>
+                                                <option value="সিলেট">সিলেট</option>
+                                                <option value="ফাপাড">ফাপাড</option>
+                                                <option value="বার্ষিক" className="font-bold text-purple-700">বার্ষিক</option>
+                                            </>
+                                        )}
+                                    </select>
+                                </div>
+
+                                {/* Type Filter */}
+                                <div>
+                                    <label className="text-sm font-bold text-gray-700 mb-2 block flex items-center gap-2">
+                                        <i className="fas fa-filter text-indigo-500"></i> আপত্তির ধরন:
+                                    </label>
+                                    <select 
+                                        className="w-full border border-gray-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none text-sm bg-white shadow-sm transition-all hover:border-indigo-300"
+                                        value={filterType}
+                                        onChange={(e) => setFilterType(e.target.value)}
+                                    >
+                                        <option value="All">সকল ধরন</option>
+                                        <option value="SFI">SFI</option>
+                                        <option value="Non-SFI">Non-SFI</option>
+                                        <option value="বার্ষিক রিপোর্টভূক্ত" className="font-bold text-purple-700">বার্ষিক রিপোর্টভূক্ত</option>
+                                    </select>
+                                </div>
+
+                                {/* Category Filter */}
+                                <div>
+                                    <label className="text-sm font-bold text-gray-700 mb-2 block flex items-center gap-2">
+                                        <i className="fas fa-tags text-indigo-500"></i> ক্যাটাগরি:
+                                    </label>
+                                    <select 
+                                        className="w-full border border-gray-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none text-sm bg-white shadow-sm transition-all hover:border-indigo-300"
+                                        value={filterCategory}
+                                        onChange={(e) => setFilterCategory(e.target.value)}
+                                    >
+                                        <option value="All">সকল ক্যাটাগরি</option>
+                                        {uniqueCategories.map(cat => (
+                                            <option key={cat} value={cat}>{cat}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Year Filter */}
+                                <div>
+                                    <label className="text-sm font-bold text-gray-700 mb-2 block flex items-center gap-2">
+                                        <i className="far fa-calendar-alt text-indigo-500"></i> নিরীক্ষা বছর:
+                                    </label>
+                                    <select 
+                                        className="w-full border border-gray-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none text-sm bg-white shadow-sm transition-all hover:border-indigo-300"
+                                        value={filterYear}
+                                        onChange={(e) => setFilterYear(e.target.value)}
+                                    >
+                                        {uniqueYears.map(year => (
+                                            <option key={year} value={year}>{year === 'All' ? 'সকল বছর' : year}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Search Bar */}
+                                <div className="lg:col-span-4 mt-2">
+                                    <div className="relative group">
+                                        <input 
+                                            type="text" 
+                                            placeholder="দপ্তর, অনু নং বা আপত্তির শিরোনাম দিয়ে খুঁজুন..."
+                                            className="w-full border border-gray-200 rounded-xl pl-12 p-3.5 focus:ring-2 focus:ring-indigo-500 outline-none text-sm bg-white shadow-sm transition-all hover:border-indigo-300"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                        />
+                                        <i className="fas fa-search absolute left-4 top-4 text-gray-400 group-hover:text-indigo-500 transition-colors"></i>
+                                        {searchTerm && (
+                                            <button 
+                                                onClick={() => setSearchTerm('')}
+                                                className="absolute right-4 top-3.5 text-gray-400 hover:text-red-500 transition-colors"
+                                            >
+                                                <i className="fas fa-times-circle text-lg"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* --- Modern Tabs Navigation --- */}
+                        <div className="flex gap-2 mb-4">
+                            <button
+                                className={`px-6 py-3 rounded-t-xl text-sm font-bold transition-all duration-300 ${activeTab === 'summary' ? 'bg-indigo-600 text-white shadow-md transform -translate-y-1' : 'bg-white text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 border border-gray-200 border-b-0 mt-1'}`}
+                                onClick={() => handleTabSwitch('summary')}
+                            >
+                                <i className="fas fa-chart-pie mr-2"></i> সারসংক্ষেপ (Summary)
+                            </button>
+                            <button
+                                className={`px-6 py-3 rounded-t-xl text-sm font-bold transition-all duration-300 ${activeTab === 'details' ? 'bg-indigo-600 text-white shadow-md transform -translate-y-1' : 'bg-white text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 border border-gray-200 border-b-0 mt-1'}`}
+                                onClick={() => handleTabSwitch('details')}
+                            >
+                                <i className="fas fa-list mr-2"></i> বিস্তারিত (Details)
+                            </button>
+                        </div>
+
+                        {/* --- Summary Tab Content --- */}
+                        {activeTab === 'summary' && (
+                            <div className="bg-white rounded-2xl rounded-tl-none shadow-md border border-gray-100 overflow-hidden animate-fade-in -mt-4 relative z-10">
+                                <div className="overflow-x-auto max-h-[600px]">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="text-xs text-gray-600 uppercase bg-slate-50 sticky top-0 shadow-sm z-10 backdrop-blur-md">
+                                            <tr>
+                                                <th className="p-4 border-b font-bold tracking-wider">দপ্তরের নাম</th>
+                                                <th className="p-4 border-b text-center font-bold tracking-wider">জোন</th>
+                                                <th className="p-4 border-b text-center font-bold tracking-wider">মোট আপত্তি</th>
+                                                <th className="p-4 border-b text-center text-red-600 font-bold tracking-wider">SFI</th>
+                                                <th className="p-4 border-b text-center text-amber-600 font-bold tracking-wider">Non-SFI</th>
+                                                <th className="p-4 border-b text-center text-purple-600 font-bold tracking-wider">বার্ষিক</th>
+                                                <th className="p-4 border-b text-center text-emerald-600 font-bold tracking-wider">নিষ্পন্ন</th>
+                                                <th className="p-4 border-b text-center text-orange-500 font-bold tracking-wider">অনিষ্পন্ন</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {summaryData.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan="8" className="p-12 text-center text-gray-400">
+                                                        <i className="fas fa-chart-bar text-5xl mb-4 text-gray-200"></i>
+                                                        <p className="text-lg font-medium">সারসংক্ষেপ করার মতো কোনো তথ্য নেই</p>
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                summaryData.map((row, idx) => (
+                                                    <tr key={idx} className="hover:bg-indigo-50/50 transition-colors group">
+                                                        {/* Clickable Office Name */}
+                                                        <td 
+                                                            className="p-4 font-bold text-gray-800 cursor-pointer"
+                                                            onClick={() => handleOfficeClick(row.office)}
+                                                            title="এই দপ্তরের বিস্তারিত দেখতে ক্লিক করুন"
+                                                        >
+                                                            <div className="flex items-center gap-2 group-hover:text-indigo-600 transition-colors">
+                                                                <span className="border-b border-transparent group-hover:border-indigo-600">
+                                                                    {row.office}
+                                                                </span>
+                                                                <i className="fas fa-external-link-alt text-[10px] opacity-0 group-hover:opacity-100 text-indigo-400 transition-all transform group-hover:translate-x-1"></i>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4 text-center text-gray-600">
+                                                            <span className="bg-gray-100 px-2 py-1 rounded-md text-xs font-medium">{row.zone}</span>
+                                                        </td>
+                                                        <td className="p-4 text-center font-black text-gray-700 bg-gray-50/30">{row.total}</td>
+                                                        <td className="p-4 text-center text-red-600 font-bold">{row.sfi}</td>
+                                                        <td className="p-4 text-center text-amber-600 font-bold">{row.nonsfi}</td>
+                                                        <td className="p-4 text-center text-purple-600 font-bold">{row.annual}</td>
+                                                        <td className="p-4 text-center text-emerald-600 font-bold">{row.resolved}</td>
+                                                        <td className="p-4 text-center text-orange-500 font-bold">{row.total - row.resolved}</td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* --- Details Tab Content --- */}
+                        {activeTab === 'details' && (
+                            <div className="bg-white rounded-2xl rounded-tl-none shadow-md border border-gray-100 overflow-hidden animate-fade-in -mt-4 relative z-10">
+                                <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-100 px-5 py-3.5 flex justify-between items-center">
+                                    <span className="text-indigo-800 font-bold text-sm flex items-center gap-2">
+                                        <i className="fas fa-list-ul"></i> সর্বমোট {filteredData.length} টি রেকর্ড পাওয়া গেছে
+                                    </span>
+                                </div>
+                                <div className="overflow-x-auto max-h-[600px]">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="text-xs text-gray-600 uppercase bg-slate-50 sticky top-0 shadow-sm z-10 backdrop-blur-md">
+                                            <tr>
+                                                <th className="p-4 border-b font-bold tracking-wider whitespace-nowrap">দপ্তরের নাম</th>
+                                                <th className="p-4 border-b font-bold tracking-wider whitespace-nowrap">বছর ও অনু নং</th>
+                                                <th className="p-4 border-b font-bold tracking-wider min-w-[200px]">আপত্তির শিরোনাম</th>
+                                                <th className="p-4 border-b font-bold tracking-wider">ক্যাটাগরি</th>
+                                                <th className="p-4 border-b font-bold tracking-wider text-center">ধরন</th>
+                                                <th className="p-4 border-b font-bold tracking-wider text-right">টাকার পরিমান</th>
+                                                <th className="p-4 border-b font-bold tracking-wider text-center">জোন</th>
+                                                <th className="p-4 border-b font-bold tracking-wider text-center">অ্যাকশন</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {filteredData.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan="8" className="p-12 text-center text-gray-400">
+                                                        <i className="fas fa-box-open text-5xl mb-4 text-gray-200"></i>
+                                                        <p className="text-lg font-medium">কোনো বিস্তারিত তথ্য পাওয়া যায়নি</p>
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                filteredData.map((item) => (
+                                                    <tr key={item.id} className={`hover:bg-indigo-50/40 transition-colors ${item.status === 'Resolved' ? 'bg-emerald-50/30' : 'bg-white'}`}>
+                                                        <td className="p-4 align-top font-bold text-gray-800">{item.office}</td>
+                                                        <td className="p-4 align-top whitespace-nowrap">
+                                                            <div className="text-gray-900 font-bold">{item.year}</div>
+                                                            <div className="text-indigo-500 font-medium text-xs mt-1 bg-indigo-50 inline-block px-2 py-0.5 rounded">অনু নং: {item.para}</div>
+                                                        </td>
+                                                        <td className="p-4 align-top">
+                                                            <p className="text-gray-600 line-clamp-3 leading-relaxed" title={item.title}>{item.title}</p>
+                                                        </td>
+                                                        <td className="p-4 align-top text-gray-600 font-medium">
+                                                            {item.category}
+                                                        </td>
+                                                        <td className="p-4 align-top text-center">
+                                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap shadow-sm border ${
+                                                                item.type === 'SFI' ? 'bg-red-50 text-red-700 border-red-200' : 
+                                                                item.type === 'Non-SFI' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                                                'bg-purple-50 text-purple-700 border-purple-200'
+                                                            }`}>
+                                                                {item.type}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-4 align-top text-right font-mono font-bold text-gray-700">
+                                                            {item.amount.toLocaleString('en-IN')}
+                                                        </td>
+                                                        <td className="p-4 align-top text-center text-gray-500 font-medium">
+                                                            {item.zone}
+                                                        </td>
+                                                        <td className="p-4 align-top text-center">
+                                                            {item.status === 'Resolved' ? (
+                                                                <button onClick={() => toggleResolve(item.id)} className="inline-flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-500 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border border-gray-200 hover:text-red-500">
+                                                                    <i className="fas fa-undo"></i> বাতিল
+                                                                </button>
+                                                            ) : (
+                                                                <button onClick={() => toggleResolve(item.id)} className="inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-500 hover:text-white text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm transform hover:-translate-y-0.5">
+                                                                    <i className="fas fa-check-circle"></i> নিস্পত্তি
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                    </main>
+                </div>
+            );
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
-    
-    <!-- Simple Custom CSS for smooth animations -->
-    <style>
-        .animate-fade-in-up {
-            animation: fadeInUp 0.4s ease-out forwards;
-        }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
 </body>
 </html>
