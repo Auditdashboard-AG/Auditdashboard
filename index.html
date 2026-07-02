@@ -281,6 +281,94 @@
                 resolved: filteredData.filter(d => d.status === 'Resolved').length
             };
 
+            // --- Export Functions ---
+            const exportToExcel = () => {
+                if (filteredData.length === 0) {
+                    alert("এক্সপোর্ট করার মতো কোনো ডাটা নেই!");
+                    return;
+                }
+                
+                // এক্সেলের জন্য ডাটা ফরম্যাটিং
+                const exportData = filteredData.map((item, index) => ({
+                    "ক্রমিক নং": index + 1,
+                    "দপ্তরের নাম": item.office,
+                    "নিরীক্ষা বছর": item.year,
+                    "অনু নং": item.para,
+                    "আপত্তির শিরোনাম": item.title,
+                    "ক্যাটাগরি": item.category,
+                    "ধরন": item.type,
+                    "টাকার পরিমান": item.amount,
+                    "জোন": item.zone,
+                    "স্ট্যাটাস": item.status === 'Resolved' ? 'নিষ্পন্ন' : 'অনিষ্পন্ন'
+                }));
+
+                const ws = XLSX.utils.json_to_sheet(exportData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Objections");
+                XLSX.writeFile(wb, `Audit_Objections_${new Date().toISOString().split('T')[0]}.xlsx`);
+            };
+
+            const exportToWord = () => {
+                if (filteredData.length === 0) {
+                    alert("এক্সপোর্ট করার মতো কোনো ডাটা নেই!");
+                    return;
+                }
+
+                // যদি SutonnyMJ অন থাকে তবে Word ফেন্টেও SutonnyMJ অ্যাপ্লাই হবে
+                const fontStyle = useSutonny ? "font-family: 'SutonnyMJ', sans-serif;" : "font-family: 'Kalpurush', 'Hind Siliguri', sans-serif;";
+
+                let tableRows = filteredData.map((item, index) => `
+                    <tr>
+                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">${index + 1}</td>
+                        <td style="border: 1px solid #000; padding: 5px; ${fontStyle}">${item.office}</td>
+                        <td style="border: 1px solid #000; padding: 5px; ${fontStyle}">${item.year}</td>
+                        <td style="border: 1px solid #000; padding: 5px; text-align: center; ${fontStyle}">${item.para}</td>
+                        <td style="border: 1px solid #000; padding: 5px; ${fontStyle}">${item.title}</td>
+                        <td style="border: 1px solid #000; padding: 5px; ${fontStyle}">${item.category}</td>
+                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">${item.type}</td>
+                        <td style="border: 1px solid #000; padding: 5px; text-align: right; ${fontStyle}">${item.amount.toLocaleString('en-IN')}</td>
+                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">${item.status === 'Resolved' ? 'নিষ্পন্ন' : 'অনিষ্পন্ন'}</td>
+                    </tr>
+                `).join('');
+
+                // Word ফাইলের জন্য HTML টেমপ্লেট
+                const html = `
+                    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                    <head><meta charset='utf-8'><title>Audit Report</title></head>
+                    <body>
+                        <h2 style="text-align: center; font-family: sans-serif;">অডিট আপত্তি তালিকা</h2>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background-color: #d9e2f3;">
+                                    <th style="border: 1px solid #000; padding: 8px;">ক্রঃ নং</th>
+                                    <th style="border: 1px solid #000; padding: 8px;">দপ্তরের নাম</th>
+                                    <th style="border: 1px solid #000; padding: 8px;">নিরীক্ষা বছর</th>
+                                    <th style="border: 1px solid #000; padding: 8px;">অনু নং</th>
+                                    <th style="border: 1px solid #000; padding: 8px;">শিরোনাম</th>
+                                    <th style="border: 1px solid #000; padding: 8px;">ক্যাটাগরি</th>
+                                    <th style="border: 1px solid #000; padding: 8px;">ধরন</th>
+                                    <th style="border: 1px solid #000; padding: 8px;">টাকার পরিমান</th>
+                                    <th style="border: 1px solid #000; padding: 8px;">স্ট্যাটাস</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRows}
+                            </tbody>
+                        </table>
+                    </body>
+                    </html>
+                `;
+
+                // Blob তৈরি করে Download করা
+                const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `Audit_Objections_${new Date().toISOString().split('T')[0]}.doc`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
 
             // --- UI RENDER ---
 
@@ -622,10 +710,28 @@
                         {/* Details Tab Content */}
                         {activeTab === 'details' && (
                             <div className="bg-white rounded-2xl rounded-tl-none shadow-md border border-gray-100 overflow-hidden animate-fade-in -mt-4 relative z-10">
-                                <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-100 px-5 py-3.5 flex justify-between items-center force-sans">
+                                <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-100 px-5 py-3.5 flex justify-between items-center flex-wrap gap-3 force-sans">
                                     <span className="text-indigo-800 font-bold text-sm flex items-center gap-2">
                                         <i className="fas fa-list-ul"></i> সর্বমোট <span className={textClass}>{filteredData.length}</span> টি রেকর্ড পাওয়া গেছে
                                     </span>
+                                    
+                                    {/* Export Buttons */}
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={exportToExcel} 
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 transform hover:-translate-y-0.5"
+                                            title="Excel ফাইলে ডাউনলোড করুন"
+                                        >
+                                            <i className="fas fa-file-excel"></i> Excel
+                                        </button>
+                                        <button 
+                                            onClick={exportToWord} 
+                                            className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 transform hover:-translate-y-0.5"
+                                            title="Word ফাইলে ডাউনলোড করুন"
+                                        >
+                                            <i className="fas fa-file-word"></i> Word
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="overflow-x-auto max-h-[600px]">
                                     <table className="w-full text-sm text-left">
